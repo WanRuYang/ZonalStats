@@ -60,23 +60,23 @@ def bbox(f):
 
 def ft_raster(rsdata, geotransform, bbox):
 	# get location offset on raster of each feature 
-	x1 = int((bbox[0] - geotransform[0]) / geotransform[1])
-	x2 = int((bbox[1] - geotransform[0]) / geotransform[1]) + 1
+	# get the center point value only 
+	x1 = int((bbox[0]+15 - geotransform[0]) / geotransform[1])
 		
-	y1 = int((bbox[3] - geotransform[3]) / geotransform[5])
-	y2 = int((bbox[2] - geotransform[3]) / geotransform[5]) + 1
+	y1 = int((bbox[3]-15 - geotransform[3]) / geotransform[5])
 
-	xsize = x2-x1
-	ysize = y2-y1
+	xsize = 1
+	ysize = 1
 
 	return (x1, y1, xsize, ysize)
 
 
-def labelas(vector_path, raster_path):
+def labelas(vector_path, raster_path, modifyShp=None):
 
 	v = fiona.open(vector_path) 
 	r = Rs(raster_path)
-		
+	
+	# TODO if moidfyShp=True: 	
 	#write to shpafile 
 	# with fiona.open('sum2005.shp', 'w',crs=from_epsg(3310),driver='ESRI Shapefile', schema=sink_schema) as output:
 	# Copy the source schema and add two new properties.
@@ -90,15 +90,14 @@ def labelas(vector_path, raster_path):
 	# 		print 'feature', i, b['properties']
 	# 		output.write(b)
 
-	# write to csv
-
+	# return datafram
 	dataout = []
 	nb = [0]
 	for x in range(1, 15): nb.append(x); nb.append(-x)
 	for i, b in enumerate(v):
 
 			offset = ft_raster(r, r.geotransform, bbox(b))
-			gddVal = r.b1.ReadAsArray(offset[0], offset[1], 1, 1)
+			gddVal = r.b1.ReadAsArray(*offset)
 
 			if int(gddVal) > -1000:
 				pass
@@ -112,19 +111,21 @@ def labelas(vector_path, raster_path):
 
 	df =  pd.DataFrame(dataout)
 	df = df[['comtrs', 'year', 'gdd']]
+	print 'year:', int(re.search('\d+',raster_path).group())
 	print df.iloc[1:5, ]
+
 	return df 
 
-vector_path = '/home/wryang/etdata/gdd/splm.shp'
-# raster_path = '/home/wryang/etdata/gdd/g2005_alber.tif'
-# labelas(vector_path, raster_path)  
 
-dfs=[]
-for f in sorted(glob.glob('/home/wryang/etdata/gdd/g*_alber.tif')):
-	dfs.append(labelas(vector_path, f))
-	print len(dfs)
-dfs = pd.concat(dfs)
-dfs.to_csv('/home/wryang/etdata/gdd/sumGdd.csv', engine='python')
+if __name__ == "__main__":
+	vector_path = '/home/wryang/etdata/gdd/splm.shp'
+
+	dfs=[]
+	for f in sorted(glob.glob('/home/wryang/etdata/gdd/g*_alber.tif')):
+		dfs.append(labelas(vector_path, f))
+		print len(dfs)
+	dfs = pd.concat(dfs)
+	dfs.to_csv('/home/wryang/etdata/gdd/sumGdd.csv', engine='python')
 
 
 
