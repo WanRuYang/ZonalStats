@@ -4,6 +4,8 @@ import gdal
 import glob
 import pandas as pd
 import re
+import cPickle as pkl
+
 
 class ZonalStats(object):
         def __init__(self, inDataFile, inLabelFile, maskNoData=False):
@@ -28,7 +30,7 @@ class ZonalStats(object):
 
         def anz(self):
                 self.result = {'id':list(self.labSet),
-                         'mean':list(ndimage.mean(self.data, labels=self.lb, index=self.labSet))
+                         'mean':[ round(x, 4) for x in list(ndimage.mean(self.data, labels=self.lb, index=self.labSet))]
                          # ,
                          # 'min':list(ndimage.minimum(self.data, labels=self.lb, index=self.labSet)),
                          # 'max':list(ndimage.maximum(self.data, labels=self.lb, index=self.labSet)),
@@ -83,18 +85,20 @@ class ZonalStats(object):
         #         ndimage.labeled_comprehension(self.data, self.lb, self.labSet, analyze, float, -1)
         #         print hist
 
-for yr in range(2005, 2015):
+for yr in range(2006, 2015):
 
     """
     summary ndvi rasters; take mean value only 
     """
+    print 'data year %d' %yr
     datafiles = sorted(glob.glob('/home/wryang/etdata/modisTemp/vi*'+str(yr)+'*sg134.tif'))
+    print datafiles[0]
     zonefile = '/home/wryang/etdata/ndviGrid.tif'
     dfs=[]
 
     dfout = ZonalStats( datafiles[0], zonefile, True ).anz()
     dfout.columns = ['id', re.search('\d{7}', datafiles[0] ).group()]
-    print 'date column name %s of file %s' %(re.search('\d{7}', f ).group(), datafiles[0])
+    print 'date column name %s of file %s' %(re.search('\d{7}', datafiles[0] ).group(), datafiles[0])
 
     for f in datafiles[1:]:
         print f
@@ -104,8 +108,12 @@ for yr in range(2005, 2015):
         result.columns = ['id', dataCol ]
         result = result[[dataCol]]
         dfout = dfout.join(result)
-    dfout.to_csv('/home/wryang/etdata/cimis/vi'+str(yr)+'.csv', engine='python')
 
+    # export to csv 
+    # dfout.to_csv('/home/wryang/etdata/cimis/vi'+str(yr)+'.csv')
+    # exprot to pkl, the file is big and the following analysis will be done in python 
+    with open('/home/wryang/etdata/cimis/vi'+str(yr)+'.pkl', 'a') as f:
+        pkl.dump(df, f)
 
 
 # datafiles = sorted(glob.glob('kc201*tif'))
