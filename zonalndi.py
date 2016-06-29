@@ -113,7 +113,7 @@ for yr in range(2006, 2015):
     # dfout.to_csv('/home/wryang/etdata/cimis/vi'+str(yr)+'.csv')
     # exprot to pkl, the file is big and the following analysis will be done in python 
     with open('/home/wryang/etdata/cimis/vi'+str(yr)+'.pkl', 'a') as f:
-        pkl.dump(df, f)
+        pkl.dump(dfout, f)
 
 
 # datafiles = sorted(glob.glob('kc201*tif'))
