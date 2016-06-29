@@ -85,22 +85,26 @@ class ZonalStats(object):
 
 for yr in range(2005, 2015):
 
+    """
+    summary ndvi rasters; take mean value only 
+    """
     datafiles = sorted(glob.glob('/home/wryang/etdata/modisTemp/vi*'+str(yr)+'*sg134.tif'))
     zonefile = '/home/wryang/etdata/ndviGrid.tif'
     dfs=[]
 
     dfout = ZonalStats( datafiles[0], zonefile, True ).anz()
     dfout.columns = ['id', re.search('\d{7}', datafiles[0] ).group()]
-
+    print 'date column name %s of file %s' %(re.search('\d{7}', f ).group(), datafiles[0])
 
     for f in datafiles[1:]:
         print f
         result = ZonalStats( f, zonefile, True ).anz()
-        dateCol = re.search('\d{7}', f ).group()
-        result.columns = ['id', dateCol ]
-        result = result[[dateCol]]
+        dataCol = re.search('\d{7}', f ).group()
+        print 'date column name %s of file %s' %(dataCol,f)
+        result.columns = ['id', dataCol ]
+        result = result[[dataCol]]
         dfout = dfout.join(result)
-    dfout.to_csv('vi'+str(yr)+'.csv', engine='python')
+    dfout.to_csv('/home/wryang/etdata/cimis/vi'+str(yr)+'.csv', engine='python')
 
 
 
