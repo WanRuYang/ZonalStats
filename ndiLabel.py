@@ -171,5 +171,5 @@ def labelas(vector_path, raster_path):
 #for i in range(len(rs)):
 #	labelas(vs[i], rs[i])	
 # convert vi250.tif to vi250.shp
-labelas('vi250crop.shp', 'kc30.tif')
+labelas('/home/wryang/etdata/splm_area.shp', 'kc30.tif')
     	
