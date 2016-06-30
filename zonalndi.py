@@ -5,49 +5,43 @@ import glob
 import pandas as pd
 import re
 import cPickle as pkl
-
+import os
 
 class ZonalStats(object):
-        def __init__(self, inDataFile, inLabelFile, maskNoData=False):
+        def __init__(self, inDataFile, inLabelFile):
                 self._inDs = inDataFile
                 self._inLb = inLabelFile
                 self.dataDs = gdal.Open(self._inDs)
-                self.labelDs=  gdal.Open(self._inLb)
-
-                if maskNoData==False:
-                    self.data = self.dataDs.GetRasterBand(1).ReadAsArray()
-                else:
-                    nd = self.dataDs.GetRasterBand(1).GetNoDataValue()
-                    self.data = np.ma.masked_less_equal(self.dataDs.GetRasterBand(1).ReadAsArray(), nd)
-                
-                self.lb = self.labelDs.GetRasterBand(1).ReadAsArray()
-                self.labSet = np.unique( self.lb )
+                self.labelDs=  gdal.Open(self._inLb, gdal.GA_Update)
+                self.data = self.dataDs.GetRasterBand(1).ReadAsArray()
+		self.lb = self.labelDs.GetRasterBand(1).ReadAsArray()
+		self.labSet = np.unique( self.lb )
                 self.result = {}
                 print self.data.shape
-                print self.lb.shape                #self.df
+                print self.lb.shape               
 
                 return None
 
         def anz(self):
                 self.result = {'id':list(self.labSet),
-                         'mean':[ round(x, 4) for x in list(ndimage.mean(self.data, labels=self.lb, index=self.labSet))]
-                         # ,
-                         # 'min':list(ndimage.minimum(self.data, labels=self.lb, index=self.labSet)),
-                         # 'max':list(ndimage.maximum(self.data, labels=self.lb, index=self.labSet)),
-                         # 'std':list(ndimage.variance(self.data, labels=self.lb, index=self.labSet))
+                         'mean':[ round(x, 4) for x in list(ndimage.mean(self.data, labels=self.lb, index=self.labSet))],
+                         'min':list(ndimage.minimum(self.data, labels=self.lb, index=self.labSet)),
+                         'max':list(ndimage.maximum(self.data, labels=self.lb, index=self.labSet)),
+                         'std':list(ndimage.variance(self.data, labels=self.lb, index=self.labSet))
                          }
                 #print self.result['id']
                 #print self.result['min']
                 #print len(self.result['min'])
                 self.df = pd.DataFrame(self.result)
+		self.df = self.df[self.df['id']>0 ]
                 self.df.set_index(self.df['id'])
-                #print self.df
-
+               	
+		# save each zonal ouput ...TODO
                 # self.outname = self._inDs[:-4]+'.csv'
                 # f = open(self.outname, 'w')
                 # self.df.to_csv( f, index=False )
                 # f.close()
-
+		print self.df.iloc[0:5, ]
 
                 return self.df
 
@@ -66,7 +60,7 @@ class ZonalStats(object):
                         zonalstats = ndimage.variance(self.data, labels=self.lb, index=self.labSet)
                 return zonalstats
 
-        #todo add properties....
+        #TODO add properties....
         #staticmethod
         # def sumlabel(self):
         #         hist = []
@@ -85,56 +79,55 @@ class ZonalStats(object):
         #         ndimage.labeled_comprehension(self.data, self.lb, self.labSet, analyze, float, -1)
         #         print hist
 
-for yr in range(2006, 2015):
 
-    """
-    summary ndvi rasters; take mean value only 
-    """
-    print 'data year %d' %yr
-    datafiles = sorted(glob.glob('/home/wryang/etdata/modisTemp/vi*'+str(yr)+'*sg134.tif'))
-    print datafiles[0]
-    zonefile = '/home/wryang/etdata/ndviGrid.tif'
-    dfs=[]
+def fixlabel(inData, inLabel):
+	"""
+	dobule check if the zonal label image correctly label each no data value "0"
+	"""
+	lds = gdal.Open(inLabel, gdal.GA_Update)
+	dds = gdal.Open(inData)
+	
+	lb = (lds.GetRasterBand(1).ReadAsArray())
+	db = (dds.GetRasterBand(1).ReadAsArray())
+	
+	r, c = lb.shape	
 
-    dfout = ZonalStats( datafiles[0], zonefile, True ).anz()
-    dfout.columns = ['id', re.search('\d{7}', datafiles[0] ).group()]
-    print 'date column name %s of file %s' %(re.search('\d{7}', datafiles[0] ).group(), datafiles[0])
+	for i in range(r*c):
+		if (db.flatten())[i] == -99:
+			(lb.flatten())[i]=0
 
-    for f in datafiles[1:]:
-        print f
-        result = ZonalStats( f, zonefile, True ).anz()
-        dataCol = re.search('\d{7}', f ).group()
-        print 'date column name %s of file %s' %(dataCol,f)
-        result.columns = ['id', dataCol ]
-        result = result[[dataCol]]
-        dfout = dfout.join(result)
-
-    # export to csv 
-    # dfout.to_csv('/home/wryang/etdata/cimis/vi'+str(yr)+'.csv')
-    # exprot to pkl, the file is big and the following analysis will be done in python 
-    with open('/home/wryang/etdata/cimis/vi'+str(yr)+'.pkl', 'a') as f:
-        pkl.dump(dfout, f)
+	lds.GetRasterBand(1).WriteArray(lb.reshape(r, c), 0, 0)
+	lds = None
+	dds = None
 
 
-# datafiles = sorted(glob.glob('kc201*tif'))
-# modis = sorted(glob.glob('modisTemp/vi*A201*crop.tif'))
+if __name__ == "__main__": 
+	for yr in range(2005, 2015):
 
+	"""
+    	summary ndvi rasters; take mean value only 
+    	"""
+    	print 'data year %d' %yr
+	datafiles = sorted(glob.glob('/home/wryang/etdata/modisTemp/vi*'+str(yr)+'*sg134.tif'))
+    	print datafiles[0]
+    	zonefile = '/home/wryang/etdata/ndviGrid.tif'
+        dfout = ZonalStats( datafiles[0], zonefile ).anz()
+	dfout.columns = ['id', re.search('\d{7}', datafiles[0] ).group()]
+        print 'date column name %s of file %s' %(re.search('\d{7}', datafiles[0] ).group(), datafiles[0])
 
+        for f in datafiles[1:]:
+		print f
+		result = ZonalStats( f, zonefile ).anz()
+        	dataCol = re.search('\d{7}', f ).group()
+	        print 'date column name %s of file %s' %(dataCol,f)
+        	result.columns = ['id', dataCol ]
+	        result = result[[dataCol]]
+	        dfout = dfout.join(result)
 
-#for i in range(len(datafiles)):
-#       print 'data image %s' % datafiles[i]
-#       ZonalStats( datafiles[i], 'kc30.tif' ).anz()
+	# export to csv 
+	dfout.to_csv('/home/wryang/etdata/cimis/vi'+str(yr)+'.csv')
 
-#       print 'temp file %s' % datafiles[i][:-4]+'.csv' 
+	# exprot to pkl, the file is big and the following analysis will be done in python 
+	# with open('/home/wryang/etdata/cimis/vi'+str(yr)+'.pkl', 'a') as f:
+	#     pkl.dump(dfout, f)
 
-# ds = [re.search('\d+', f).group() for f in datafiles]
-# modis = [f for f in modis if re.search('\d+', f).group(0) in ds]
-# for i in range(len(ds)):
-#         print 'data files and vi files pari %s %s' %(ds[i], modis[i])
-#         df_kc = pd.read_csv( datafiles[i][:-4]+'.csv' )
-#         print df_kc.iloc[8000:8005, ]
-
-#         #print 'vi image:%s' %modis[i]
-#         df_vi = pd.DataFrame({ 'ndvi':list(ZonalStats(modis[i], 'vi250crop.tif').cal('mean')) })
-#         df = pd.concat([df_vi, df_kc], axis=1)
-#         df.to_csv( datafiles[i][:-4]+'_vikc.csv', index=False )
