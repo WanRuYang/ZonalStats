@@ -26,30 +26,15 @@ class Rs(object):
 		self.geotransform = self.rsData.GetGeoTransform()
 		self._oriX = self.geotransform[0]
 		self._oriY = self.geotransform[3]
-		self._resX = self.geotransform[1]
-		self._resY = self.geotransform[5]
+		self._resX = abs(self.geotransform[1])
+		self._resY = abs(self.geotransform[5])
 		self.b1 = self.rsData.GetRasterBand(1)
 		self.nodata = self.b1.GetNoDataValue()
 		self.proj = self.rsData.GetProjection()
  		#p = osr.SpatialReference()
 		#p.ImportFromEPSG(3310)
-		#self.rsData.SetProjection(p.ExportToWkt)
-		
-		
-		
-	@property
-	def oriX(self):
-		return self._oriX
-	@property
-	def oriY(self):
-		return self._oriY
-	@property
-	def resX(self):
-		return abs(self._resX)
-	@property
-	def resY(self):
-		return abs(self._resY)
-
+		#self.rsData.SetProjection(p.ExportToWkt)		
+	
 	#TODO: setting geotransform
 
 def ft_raster(rsdata, geotransform, bbox):
